@@ -1,50 +1,24 @@
 
-name: Build Antepasados APK
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
-
       - name: Extraer proyecto Android
         run: |
-          unzip -q Antepasados_Proyecto_Android_APK.zip -d source
-          cp source/settings.gradle .
-          cp source/build.gradle .
-          cp source/gradle.properties .
-          cp -R source/app .
-
-      - name: Configurar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar componentes Android
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Configurar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Compilar APK
-        run: gradle assembleDebug
-
-      - name: Guardar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Antepasados-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          set -e
+          echo "Buscando el archivo ZIP..."
+          ZIP="$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)"
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: No se encuentra ningún ZIP en la raíz del repositorio."
+            ls -la
+            exit 1
+          fi
+          echo "ZIP encontrado: $ZIP"
+          mkdir -p source
+          unzip -q "$ZIP" -d source
+          ROOT="$(find source -name settings.gradle -type f -print -quit | xargs dirname)"
+          if [ -z "$ROOT" ] || [ ! -f "$ROOT/app/build.gradle" ]; then
+            echo "ERROR: No se encontró la estructura del proyecto Android."
+            find source -maxdepth 4 -type f
+            exit 1
+          fi
+          cp "$ROOT/settings.gradle" .
+          cp "$ROOT/build.gradle" .
+          cp "$ROOT/gradle.properties" .
+          cp -R "$ROOT/app" .
